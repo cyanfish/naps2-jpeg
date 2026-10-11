@@ -1,0 +1,83 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFrameworks>net462;netstandard2.0;net6.0</TargetFrameworks>
+        <RootNamespace>NAPS2.Jpeg.Binaries</RootNamespace>
+        <Title>NAPS2.Jpeg.Binaries</Title>
+        <Product>NAPS2.Jpeg.Binaries</Product>
+
+        <Version>1.0.0</Version>
+        <PackageVersion>1.0.0</PackageVersion>
+        <AssemblyVersion>1.0.0.0</AssemblyVersion>
+
+        <Copyright>Copyright 2026 Ben Olden-Cooligan (note: jpegli and highway have separate copyrights)</Copyright>
+        <LangVersion>10</LangVersion>
+        <Authors>Ben Olden-Cooligan</Authors>
+        <Description>jpegli JPEG encoder binaries for NAPS2.Sdk</Description>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <RepositoryUrl>https://github.com/cyanfish/naps2-jpeg</RepositoryUrl>
+        <PackageProjectUrl>https://github.com/cyanfish/naps2-jpeg</PackageProjectUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageLicenseExpression>BSD-3-Clause</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageTags>naps2 jpegli jpeg</PackageTags>
+        <SignAssembly>true</SignAssembly>
+        <AssemblyOriginatorKeyFile>public_signing_key.snk</AssemblyOriginatorKeyFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Content Include="NAPS2.Jpeg.Binaries.targets" PackagePath="build/NAPS2.Jpeg.Binaries.targets" />
+        <None Include="..\artifacts\mac-arm64\libnaps2_jpeg.dylib">
+            <Link>lib/mac-arm64/libnaps2_jpeg.dylib</Link>
+            <Pack>true</Pack>
+            <PackageCopyToOutput>true</PackageCopyToOutput>
+            <PackagePath>contentFiles/_macarm</PackagePath>
+        </None>
+        <None Include="..\artifacts\mac-x64\libnaps2_jpeg.dylib">
+            <Link>lib/mac-x64/libnaps2_jpeg.dylib</Link>
+            <Pack>true</Pack>
+            <PackageCopyToOutput>true</PackageCopyToOutput>
+            <PackagePath>contentFiles/_mac</PackagePath>
+        </None>
+        <None Include="..\artifacts\linux-x64\libnaps2_jpeg.so">
+            <Link>lib/linux-x64/libnaps2_jpeg.so</Link>
+            <Pack>true</Pack>
+            <PackageCopyToOutput>true</PackageCopyToOutput>
+            <PackagePath>contentFiles/_linux</PackagePath>
+        </None>
+        <None Include="..\artifacts\linux-arm64\libnaps2_jpeg.so">
+            <Link>lib/linux-arm64/libnaps2_jpeg.so</Link>
+            <Pack>true</Pack>
+            <PackageCopyToOutput>true</PackageCopyToOutput>
+            <PackagePath>contentFiles/_linuxarm</PackagePath>
+        </None>
+        <None Include="..\artifacts\win-x64\naps2_jpeg.dll">
+            <Link>lib/win-x64/naps2_jpeg.dll</Link>
+            <Pack>true</Pack>
+            <PackageCopyToOutput>true</PackageCopyToOutput>
+            <PackagePath>contentFiles/_win64</PackagePath>
+        </None>
+        <None Include="..\artifacts\win-x86\naps2_jpeg.dll">
+            <Link>lib/win-x86/naps2_jpeg.dll</Link>
+            <Pack>true</Pack>
+            <PackageCopyToOutput>true</PackageCopyToOutput>
+            <PackagePath>contentFiles/_win32</PackagePath>
+        </None>
+        <None Include="..\artifacts\win-arm64\naps2_jpeg.dll">
+            <Link>lib/win-arm64/naps2_jpeg.dll</Link>
+            <Pack>true</Pack>
+            <PackageCopyToOutput>true</PackageCopyToOutput>
+            <PackagePath>contentFiles/_winarm</PackagePath>
+        </None>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="..\LICENSE" Pack="true" PackagePath="\" />
+        <None Include="..\README.md" Pack="true" PackagePath="\" />
+        <None Include="..\artifacts\jpegli-license.txt" Pack="true" PackagePath="\" />
+        <None Include="..\artifacts\jpegli-patents.txt" Pack="true" PackagePath="\" />
+        <None Include="..\artifacts\highway-license.txt" Pack="true" PackagePath="\" />
+        <None Include="..\artifacts\libjpeg-turbo-license.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+</Project>
