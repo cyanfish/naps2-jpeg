@@ -6,21 +6,21 @@
         <Title>NAPS2.Jpeg.Binaries</Title>
         <Product>NAPS2.Jpeg.Binaries</Product>
 
-        <Version>1.0.0</Version>
-        <PackageVersion>1.0.0</PackageVersion>
-        <AssemblyVersion>1.0.0.0</AssemblyVersion>
+        <Version>2.0.0</Version>
+        <PackageVersion>2.0.0</PackageVersion>
+        <AssemblyVersion>2.0.0.0</AssemblyVersion>
 
-        <Copyright>Copyright 2026 Ben Olden-Cooligan (note: jpegli and highway have separate copyrights)</Copyright>
+        <Copyright>Copyright 2026 Ben Olden-Cooligan (note: jpegli, highway, libwebp, libjxl, brotli and skcms have separate copyrights)</Copyright>
         <LangVersion>10</LangVersion>
         <Authors>Ben Olden-Cooligan</Authors>
-        <Description>jpegli JPEG encoder binaries for NAPS2.Sdk</Description>
+        <Description>jpegli, libwebp and libjxl binaries for NAPS2.Sdk</Description>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <RepositoryUrl>https://github.com/cyanfish/naps2-jpeg</RepositoryUrl>
         <PackageProjectUrl>https://github.com/cyanfish/naps2-jpeg</PackageProjectUrl>
         <RepositoryType>git</RepositoryType>
         <PackageLicenseExpression>BSD-3-Clause</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <PackageTags>naps2 jpegli jpeg</PackageTags>
+        <PackageTags>naps2 jpegli jpeg webp jxl jpegxl</PackageTags>
         <SignAssembly>true</SignAssembly>
         <AssemblyOriginatorKeyFile>public_signing_key.snk</AssemblyOriginatorKeyFile>
     </PropertyGroup>
@@ -78,6 +78,12 @@
         <None Include="..\artifacts\jpegli-patents.txt" Pack="true" PackagePath="\" />
         <None Include="..\artifacts\highway-license.txt" Pack="true" PackagePath="\" />
         <None Include="..\artifacts\libjpeg-turbo-license.md" Pack="true" PackagePath="\" />
+        <None Include="..\artifacts\libwebp-license.txt" Pack="true" PackagePath="\" />
+        <None Include="..\artifacts\libwebp-patents.txt" Pack="true" PackagePath="\" />
+        <None Include="..\artifacts\libjxl-license.txt" Pack="true" PackagePath="\" />
+        <None Include="..\artifacts\libjxl-patents.txt" Pack="true" PackagePath="\" />
+        <None Include="..\artifacts\brotli-license.txt" Pack="true" PackagePath="\" />
+        <None Include="..\artifacts\skcms-license.txt" Pack="true" PackagePath="\" />
     </ItemGroup>
 
 </Project>

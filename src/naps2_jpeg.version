@@ -1,6 +1,6 @@
 {
   global:
-    naps2_jpeg_*;
+    naps2_*;
   local:
     *;
 };

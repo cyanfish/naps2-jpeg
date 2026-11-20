@@ -31,21 +31,60 @@ if(MSVC)
     target_compile_options(jpegli-static PRIVATE "/d1trimfile:${JPEGLI_SOURCE_PREFIX}")
 endif()
 
-add_library(naps2_jpeg SHARED src/naps2_jpeg.cc)
-target_include_directories(naps2_jpeg PRIVATE sources/jpegli)
-target_link_libraries(naps2_jpeg PRIVATE jpegli-static)
-# Only export the naps2_jpeg_* API
+# Builds only the JPEG encoder (without libjxl/libwebp/skcms)
+option(NAPS2_JPEG_ONLY "Build only the JPEG encoder" OFF)
+
+if(NAPS2_JPEG_ONLY)
+    add_library(naps2_jpeg SHARED src/naps2_jpeg.cc)
+    target_include_directories(naps2_jpeg PRIVATE sources/jpegli)
+    target_link_libraries(naps2_jpeg PRIVATE jpegli-static)
+else()
+    # Configure libjxl to build only its static libraries. It shares jpegli's copy of highway (two copies can't be
+    # in the same build as they'd define the same targets), which it finds as if it were a system library.
+    set(JPEGXL_FORCE_SYSTEM_HWY ON CACHE BOOL "" FORCE)
+    set(HWY_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/sources/jpegli/third_party/highway" CACHE PATH "" FORCE)
+    set(HWY_LIBRARY hwy CACHE STRING "" FORCE)
+    foreach(opt TOOLS DEVTOOLS FUZZERS DOXYGEN MANPAGES BENCHMARK EXAMPLES JNI SJPEG OPENEXR TCMALLOC VIEWERS PLUGINS
+            JPEGLI)
+        set(JPEGXL_ENABLE_${opt} OFF CACHE BOOL "" FORCE)
+    endforeach()
+    set(JPEGXL_ENABLE_SKCMS ON CACHE BOOL "" FORCE)
+    set(JPEGXL_BUNDLE_LIBPNG OFF CACHE BOOL "" FORCE)
+    # Avoids a git version target in libjxl's tools that conflicts with jpegli's
+    set(JPEGXL_VERSION "0.13.0")
+    # Skip skcms's AVX2/AVX-512 variants (only used for color profile conversions). Their "-march=x86-64" flag also
+    # isn't accepted by Zig. These were already set by jpegli's compiler checks, so they have to be overridden.
+    set(CXX_MAVX2_SUPPORTED OFF CACHE INTERNAL "")
+    set(CXX_MAVX512F_SUPPORTED OFF CACHE INTERNAL "")
+    add_subdirectory(sources/libjxl EXCLUDE_FROM_ALL)
+
+    # Configure libwebp to build only its libraries
+    foreach(opt ANIM_UTILS CWEBP DWEBP GIF2WEBP IMG2WEBP VWEBP WEBPINFO WEBPMUX EXTRAS)
+        set(WEBP_BUILD_${opt} OFF CACHE BOOL "" FORCE)
+    endforeach()
+    set(WEBP_BUILD_LIBWEBPMUX ON CACHE BOOL "" FORCE)
+    add_subdirectory(sources/libwebp EXCLUDE_FROM_ALL)
+
+    add_library(naps2_jpeg SHARED src/naps2_jpeg.cc src/naps2_webp.cc src/naps2_jxl.cc src/naps2_util.cc
+        src/naps2_icc.cc)
+    # skcms (built into libjxl's jxl_cms) is also used to apply color profiles in WebP images
+    target_include_directories(naps2_jpeg PRIVATE sources/jpegli sources/libwebp/src sources/libjxl/third_party/skcms)
+    target_link_libraries(naps2_jpeg PRIVATE jpegli-static jxl jxl_threads webp webpdemux libwebpmux)
+endif()
+# Only export the naps2_* API
 set_target_properties(naps2_jpeg PROPERTIES
     C_VISIBILITY_PRESET hidden
     CXX_VISIBILITY_PRESET hidden
     VISIBILITY_INLINES_HIDDEN ON)
 
 if(APPLE)
-    # The jpegli static library isn't built with hidden visibility, so restrict exports explicitly
-    target_link_options(naps2_jpeg PRIVATE "LINKER:-exported_symbol,_naps2_jpeg_*")
+    # The static libraries aren't all built with hidden visibility, so restrict exports explicitly
+    target_link_options(naps2_jpeg PRIVATE "LINKER:-exported_symbol,_naps2_*")
+    # Remove unused code and local symbols
+    target_link_options(naps2_jpeg PRIVATE "LINKER:-dead_strip" "LINKER:-x")
 endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    # Only export the naps2_jpeg_* API (not symbols from static libraries like the C++ runtime), and fail on
+    # Only export the naps2_* API (not symbols from static libraries like the C++ runtime), and fail on
     # unresolved symbols
     set(NAPS2_JPEG_VERSION_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/src/naps2_jpeg.version")
     target_link_options(naps2_jpeg PRIVATE "-Wl,--version-script=${NAPS2_JPEG_VERSION_SCRIPT}" -Wl,--no-undefined)

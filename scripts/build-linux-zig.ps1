@@ -28,8 +28,9 @@ $ZIG = if ($env:ZIG) { $env:ZIG } else { (Get-Command zig).Source }
 $actualVersion = & $ZIG version
 if ($actualVersion -ne $ZIG_VERSION) { throw "Expected Zig $ZIG_VERSION, found $actualVersion" }
 
-# Only these submodules of jpegli are needed for the library build (skcms is only needed to configure)
+# Only these submodules are needed for the library build (libjxl uses jpegli's copy of highway)
 git -C "$SOURCES_DIR/jpegli" submodule update --init --depth 1 third_party/highway third_party/libjpeg-turbo third_party/skcms; Check
+git -C "$SOURCES_DIR/libjxl" submodule update --init --depth 1 third_party/brotli third_party/skcms; Check
 
 rm -Recurse -Force "$BUILD_DIR" -ErrorAction SilentlyContinue
 mkdir -Force "$BUILD_DIR/zig" | Out-Null
@@ -57,3 +58,9 @@ cp "$SOURCES_DIR/jpegli/LICENSE" "$ARTIFACTS_DIR/jpegli-license.txt"
 cp "$SOURCES_DIR/jpegli/PATENTS" "$ARTIFACTS_DIR/jpegli-patents.txt"
 cp "$SOURCES_DIR/jpegli/third_party/highway/LICENSE" "$ARTIFACTS_DIR/highway-license.txt"
 cp "$SOURCES_DIR/jpegli/third_party/libjpeg-turbo/LICENSE.md" "$ARTIFACTS_DIR/libjpeg-turbo-license.md"
+cp "$SOURCES_DIR/libwebp/COPYING" "$ARTIFACTS_DIR/libwebp-license.txt"
+cp "$SOURCES_DIR/libwebp/PATENTS" "$ARTIFACTS_DIR/libwebp-patents.txt"
+cp "$SOURCES_DIR/libjxl/LICENSE" "$ARTIFACTS_DIR/libjxl-license.txt"
+cp "$SOURCES_DIR/libjxl/PATENTS" "$ARTIFACTS_DIR/libjxl-patents.txt"
+cp "$SOURCES_DIR/libjxl/third_party/brotli/LICENSE" "$ARTIFACTS_DIR/brotli-license.txt"
+cp "$SOURCES_DIR/libjxl/third_party/skcms/LICENSE" "$ARTIFACTS_DIR/skcms-license.txt"

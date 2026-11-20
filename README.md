@@ -2,12 +2,12 @@
 
 [![NuGet](https://img.shields.io/nuget/v/NAPS2.Jpeg.Binaries)](https://www.nuget.org/packages/NAPS2.Jpeg.Binaries/)
 
-NAPS2.Jpeg.Binaries provides precompiled [jpegli](https://github.com/google/jpegli) JPEG encoder binaries for use with [NAPS2.Sdk](https://github.com/cyanfish/naps2/tree/master/NAPS2.Sdk).
+NAPS2.Jpeg.Binaries provides precompiled [jpegli](https://github.com/google/jpegli), [libwebp](https://chromium.googlesource.com/webm/libwebp) and [libjxl](https://github.com/libjxl/libjxl) binaries for use with [NAPS2.Sdk](https://github.com/cyanfish/naps2/tree/master/NAPS2.Sdk).
 
-jpegli is linked into a small native library (`naps2_jpeg`) that exposes a minimal C API (see [src/naps2_jpeg.h](src/naps2_jpeg.h)) for P/Invoke. Images are encoded as baseline JPEG with 4:2:0 chroma subsampling, adaptive quantization and optimized Huffman codes. jpegli itself is used unmodified as a submodule.
+These are linked into a single native library (`naps2_jpeg`) that exposes a minimal C API (see [src/naps2_jpeg.h](src/naps2_jpeg.h)) for P/Invoke.
 
 Supported platforms:
-- Windows 7+ x86
+- Windows 7+ x86 (jpegli only)
 - Windows 7+ x64
 - Windows 7+ arm64
 - Mac 11+ arm64
@@ -29,4 +29,4 @@ The released Linux binaries are cross-compiled on Windows with [Zig](https://zig
 
 ## Licenses
 
-This project is licensed under the BSD 3-Clause license, matching jpegli. jpegli and highway (dual-licensed Apache 2.0 / BSD 3-Clause) have separate copyrights; see the license files in `artifacts`. jpegli also uses headers from libjpeg-turbo.
+This project is licensed under the BSD 3-Clause license, matching jpegli. jpegli, highway (dual-licensed Apache 2.0 / BSD 3-Clause), libwebp, libjxl, skcms (BSD 3-Clause) and brotli (MIT) have separate copyrights; see the license files in `artifacts`. jpegli also uses headers from libjpeg-turbo.

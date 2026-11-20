@@ -147,7 +147,7 @@ extern "C" int NAPS2_JPEG_CALL naps2_jpeg_compress(
         SetError(error, error_size, "Unsupported pixel format");
         return 1;
     }
-    if (pixels == nullptr || width <= 0 || height <= 0 || stride < width * components) {
+    if (pixels == nullptr || width <= 0 || height <= 0 || stride < static_cast<int64_t>(width) * components) {
         SetError(error, error_size, "Invalid image dimensions or stride");
         return 1;
     }

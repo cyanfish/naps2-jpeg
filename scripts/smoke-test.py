@@ -1,6 +1,6 @@
 """Smoke test for a built naps2_jpeg library (standard library only, so it can run on any build machine).
 
-Usage: python3 smoke-test.py <path to naps2_jpeg library> [output.jpg]
+Usage: python3 smoke-test.py <path to naps2_jpeg library> [output dir]
 """
 import ctypes as C
 import random
@@ -18,7 +18,71 @@ def load(path):
         C.POINTER(C.POINTER(C.c_uint8)), C.POINTER(C.c_size_t), C.c_char_p, C.c_int]
     lib.naps2_jpeg_free.restype = None
     lib.naps2_jpeg_free.argtypes = [C.POINTER(C.c_uint8)]
+    if not hasattr(lib, "naps2_webp_compress"):
+        # A jpegli-only build (NAPS2_JPEG_ONLY)
+        return lib
+    out_args = [C.POINTER(C.POINTER(C.c_uint8)), C.POINTER(C.c_size_t), C.c_char_p, C.c_int]
+    for name in ("naps2_webp_compress", "naps2_jxl_compress"):
+        f = getattr(lib, name)
+        f.restype = C.c_int
+        f.argtypes = [C.c_char_p, C.c_int, C.c_int, C.c_int, C.c_int, C.c_int, C.c_char_p, C.c_size_t] + out_args
+    lib.naps2_jxl_transcode_jpeg.restype = C.c_int
+    lib.naps2_jxl_transcode_jpeg.argtypes = [C.c_char_p, C.c_size_t, C.c_char_p, C.c_size_t] + out_args
+    for name in ("naps2_webp_decompress", "naps2_jxl_decompress"):
+        f = getattr(lib, name)
+        f.restype = C.c_int
+        f.argtypes = [C.c_char_p, C.c_size_t, C.POINTER(C.POINTER(C.c_uint8))] + [C.POINTER(C.c_int)] * 3 + [
+            C.POINTER(C.POINTER(C.c_uint8)), C.POINTER(C.c_size_t), C.c_char_p, C.c_int]
     return lib
+
+
+def take_output(lib, out, size):
+    data = C.string_at(out, size)
+    lib.naps2_jpeg_free(out)
+    return data
+
+
+def encode(lib, name, pixels, w, h, fmt, quality=75, lossless=0, exif=None):
+    out = C.POINTER(C.c_uint8)()
+    size = C.c_size_t()
+    err = C.create_string_buffer(200)
+    rc = getattr(lib, name)(pixels, w, h, fmt, quality, lossless, exif, len(exif or b""), C.byref(out),
+                            C.byref(size), err, len(err))
+    if rc != 0:
+        return None, err.value.decode()
+    return take_output(lib, out, size.value), None
+
+
+def transcode(lib, jpeg, exif=None):
+    out = C.POINTER(C.c_uint8)()
+    size = C.c_size_t()
+    err = C.create_string_buffer(200)
+    rc = lib.naps2_jxl_transcode_jpeg(jpeg, len(jpeg), exif, len(exif or b""), C.byref(out), C.byref(size), err,
+                                      len(err))
+    if rc != 0:
+        return None, err.value.decode()
+    return take_output(lib, out, size.value), None
+
+
+def decode(lib, name, data):
+    """Returns ((pixels, width, height, pixel format, exif), None) or (None, error)."""
+    out = C.POINTER(C.c_uint8)()
+    w, h, fmt = C.c_int(), C.c_int(), C.c_int()
+    exif = C.POINTER(C.c_uint8)()
+    exif_size = C.c_size_t()
+    err = C.create_string_buffer(200)
+    rc = getattr(lib, name)(data, len(data), C.byref(out), C.byref(w), C.byref(h), C.byref(fmt), C.byref(exif),
+                            C.byref(exif_size), err, len(err))
+    if rc != 0:
+        return None, err.value.decode()
+    bpp = {RGB24: 3, RGBA32: 4, GRAY8: 1}[fmt.value]
+    pixels = take_output(lib, out, w.value * h.value * bpp)
+    exif_data = take_output(lib, exif, exif_size.value) if exif else None
+    return (pixels, w.value, h.value, fmt.value, exif_data), None
+
+
+def mean_abs_diff(a, b):
+    return sum(abs(x - y) for x, y in zip(a, b)) / len(a)
 
 
 def compress(lib, pixels, w, h, stride, fmt, quality=75, dpi=(300.0, 300.0)):
@@ -106,10 +170,64 @@ def main():
     again, err = compress(lib, rgb, w, h, w * 3, RGB24)
     assert again == base, "output changed after an error"
 
+    if not hasattr(lib, "naps2_webp_compress"):
+        print(f"OK (JPEG only): {len(base)} bytes (q75 JPEG), {len(g)} bytes (gray JPEG)")
+        return
+    rgba_alpha = bytes(b for i in range(0, len(rgb), 3) for b in (rgb[i], rgb[i + 1], rgb[i + 2], (i // 3) % 256))
+    # Any payload is passed through as-is (it's built/parsed by NAPS2)
+    exif = b"II*\0" + bytes(range(60))
+    sizes = {"q75 JPEG": len(base), "gray JPEG": len(g)}
+
+    for codec in ("webp", "jxl"):
+        enc, dec = f"naps2_{codec}_compress", f"naps2_{codec}_decompress"
+        # Lossless round trips are exact
+        cases = [("RGB24", rgb, RGB24), ("RGBA32", rgba_alpha, RGBA32)] + ([("GRAY8", gray, GRAY8)] if codec == "jxl" else [])
+        for name, buf, fmt in cases:
+            data, err = encode(lib, enc, buf, w, h, fmt, lossless=1, exif=exif)
+            assert data is not None, err
+            result, err = decode(lib, dec, data)
+            assert result == (buf, w, h, fmt, exif), f"{codec}: lossless {name} round trip differs ({err})"
+            if fmt == RGB24:
+                sizes[f"lossless {codec}"] = len(data)
+
+        lossy, err = encode(lib, enc, rgb, w, h, RGB24, quality=75)
+        assert lossy is not None, err
+        result = decode(lib, dec, lossy)[0]
+        assert result[1:] == (w, h, RGB24, None), f"{codec}: lossy info differs"
+        assert mean_abs_diff(result[0], rgb) < 12, f"{codec}: lossy output too different"
+        sizes[f"q75 {codec}"] = len(lossy)
+
+        for args, label in (((rgb, w, h, 99), "pixel format"), ((rgb, 0, h, RGB24), "dimensions")):
+            data, err = encode(lib, enc, *args)
+            assert data is None and err, f"{codec}: expected {label} error"
+        data, err = decode(lib, dec, b"not an image")
+        assert data is None and err, f"{codec}: expected decode error"
+        data, err = decode(lib, dec, lossy[:len(lossy) // 2])
+        assert data is None and err, f"{codec}: expected truncated data error"
+
+    # WebP can't exceed 16383 pixels per side, and has no grayscale mode
+    data, err = encode(lib, "naps2_webp_compress", bytes(16384 * 3), 16384, 1, RGB24)
+    assert data is None and "16383" in err, "expected webp size error"
+    data, err = encode(lib, "naps2_webp_compress", gray, w, h, GRAY8)
+    assert data is None and err, "expected webp gray error"
+
+    # Lossless JPEG recompression
+    transcoded, err = transcode(lib, base, exif)
+    assert transcoded is not None, err
+    assert len(transcoded) < len(base), "expected the recompressed JPEG to be smaller"
+    result = decode(lib, "naps2_jxl_decompress", transcoded)[0]
+    assert result[1:] == (w, h, RGB24, exif), "wrong transcoded jxl info"
+    assert mean_abs_diff(result[0], rgb) < 12, "transcoded output too different"
+    sizes["transcoded JPEG"] = len(transcoded)
+    data, err = transcode(lib, b"not a jpeg")
+    assert data is None and err, "expected transcode error"
+
     if len(sys.argv) > 2:
-        with open(sys.argv[2], "wb") as f:
-            f.write(base)
-    print(f"OK: {len(base)} bytes (q75 RGB), {len(g)} bytes (gray); jpegli error message: {jpegli_error!r}")
+        for name, data in (("jpegli.jpg", base), ("transcoded.jxl", transcoded)):
+            with open(f"{sys.argv[2]}/{name}", "wb") as f:
+                f.write(data)
+    print("OK: " + ", ".join(f"{v} bytes ({k})" for k, v in sizes.items()))
+    print(f"jpegli error message: {jpegli_error!r}")
 
 
 main()
