@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.18)
 
 # Static MSVC runtime for all targets (including jpegli/highway), so there's no VC++ redistributable dependency
 set(CMAKE_POLICY_DEFAULT_CMP0091 NEW)
@@ -26,9 +26,14 @@ set(HWY_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(sources/jpegli EXCLUDE_FROM_ALL)
 if(MSVC)
     # jpegli formats error messages as "<__FILE__>:<line>: <text>" into an 80-char buffer, so with full paths the
-    # text gets truncated. jpegli's own CMake already trims the path for GCC/Clang; do the same for MSVC.
+    # text gets truncated. jpegli's own CMake already trims the path for GCC/Clang; do the same for MSVC and clang-cl
+    # (which needs the Clang option passed through).
     file(TO_NATIVE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/sources/jpegli/" JPEGLI_SOURCE_PREFIX)
-    target_compile_options(jpegli-static PRIVATE "/d1trimfile:${JPEGLI_SOURCE_PREFIX}")
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+        target_compile_options(jpegli-static PRIVATE "/d1trimfile:${JPEGLI_SOURCE_PREFIX}")
+    else()
+        target_compile_options(jpegli-static PRIVATE "/clang:-fmacro-prefix-map=${JPEGLI_SOURCE_PREFIX}=")
+    endif()
 endif()
 
 # Builds only the JPEG encoder (without libjxl/libwebp/skcms)
@@ -52,11 +57,31 @@ else()
     set(JPEGXL_BUNDLE_LIBPNG OFF CACHE BOOL "" FORCE)
     # Avoids a git version target in libjxl's tools that conflicts with jpegli's
     set(JPEGXL_VERSION "0.13.0")
-    # Skip skcms's AVX2/AVX-512 variants (only used for color profile conversions). Their "-march=x86-64" flag also
-    # isn't accepted by Zig. These were already set by jpegli's compiler checks, so they have to be overridden.
+    # libjxl's own setup of skcms's AVX2/AVX-512 variants doesn't work for our builds: it only checks
+    # CMAKE_SYSTEM_PROCESSOR (which is AMD64 on Windows), and its "-march=x86-64" flag isn't accepted by Zig. So
+    # disable it (these were already set by jpegli's compiler checks, so they have to be overridden) and add the
+    # variants below instead.
     set(CXX_MAVX2_SUPPORTED OFF CACHE INTERNAL "")
     set(CXX_MAVX512F_SUPPORTED OFF CACHE INTERNAL "")
     add_subdirectory(sources/libjxl EXCLUDE_FROM_ALL)
+
+    include(CheckCXXSourceCompiles)
+    check_cxx_source_compiles("
+        #if !defined(__x86_64__) || !(defined(__clang__) || defined(__GNUC__))
+        #error
+        #endif
+        int main() { return 0; }" NAPS2_SKCMS_X64_SIMD)
+    if(NAPS2_SKCMS_X64_SIMD)
+        set(SKCMS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/sources/libjxl/third_party/skcms/src")
+        target_sources(jxl_cms PRIVATE "${SKCMS_DIR}/skcms_TransformHsw.cc" "${SKCMS_DIR}/skcms_TransformSkx.cc")
+        set_source_files_properties("${SKCMS_DIR}/skcms_TransformHsw.cc" TARGET_DIRECTORY jxl_cms
+            PROPERTIES COMPILE_OPTIONS "-mavx2;-mf16c")
+        set_source_files_properties("${SKCMS_DIR}/skcms_TransformSkx.cc" TARGET_DIRECTORY jxl_cms
+            PROPERTIES COMPILE_OPTIONS "-mavx512f;-mavx512dq;-mavx512cd;-mavx512bw;-mavx512vl")
+        get_target_property(JXL_CMS_DEFINITIONS jxl_cms COMPILE_DEFINITIONS)
+        list(REMOVE_ITEM JXL_CMS_DEFINITIONS SKCMS_DISABLE_HSW SKCMS_DISABLE_SKX)
+        set_target_properties(jxl_cms PROPERTIES COMPILE_DEFINITIONS "${JXL_CMS_DEFINITIONS}")
+    endif()
 
     # Configure libwebp to build only its libraries
     foreach(opt ANIM_UTILS CWEBP DWEBP GIF2WEBP IMG2WEBP VWEBP WEBPINFO WEBPMUX EXTRAS)
@@ -64,6 +89,10 @@ else()
     endforeach()
     set(WEBP_BUILD_LIBWEBPMUX ON CACHE BOOL "" FORCE)
     add_subdirectory(sources/libwebp EXCLUDE_FROM_ALL)
+    if(MSVC AND NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+        file(GLOB WEBP_NEON_FILES sources/libwebp/src/dsp/*_neon.c sources/libwebp/sharpyuv/*_neon.c)
+        set_source_files_properties(${WEBP_NEON_FILES} DIRECTORY sources/libwebp PROPERTIES COMPILE_FLAGS "")
+    endif()
 
     add_library(naps2_jpeg SHARED src/naps2_jpeg.cc src/naps2_webp.cc src/naps2_jxl.cc src/naps2_util.cc
         src/naps2_icc.cc)

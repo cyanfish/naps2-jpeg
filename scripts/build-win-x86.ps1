@@ -16,7 +16,7 @@ git -C "$SOURCES_DIR/libjxl" submodule update --init --depth 1 third_party/brotl
 
 rm -Recurse -Force "$BUILD_DIR" -ErrorAction SilentlyContinue
 # The 32-bit build is only used by the worker process (for JPEG), so it excludes WebP/JPEG XL
-. cmake -S "$BASE_DIR" -B "$BUILD_DIR" -A Win32 -DNAPS2_JPEG_ONLY=ON; Check
+. cmake -S "$BASE_DIR" -B "$BUILD_DIR" -A Win32 -T ClangCL -DNAPS2_JPEG_ONLY=ON; Check
 . cmake --build "$BUILD_DIR" --config Release --target naps2_jpeg; Check
 
 mkdir -Force "$TARGET_DIR" | Out-Null

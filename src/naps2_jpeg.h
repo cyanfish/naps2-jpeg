@@ -85,8 +85,9 @@ NAPS2_JPEG_API int NAPS2_JPEG_CALL naps2_jxl_decompress(
     const uint8_t* data, size_t size, uint8_t** out_pixels, int* out_width, int* out_height, int* out_pixel_format,
     uint8_t** out_exif, size_t* out_exif_size, char* error, int error_size);
 
-// Converts GRAY8, RGB24 or RGBA32 pixels (rows stride bytes apart) in place from the given ICC color profile to sRGB.
-// Fails without changing the pixels if the profile can't be applied (e.g. a CMYK profile with RGB pixels).
+// Converts GRAY8, RGB24, BGR24, RGBA32 or BGRA32 pixels (rows stride bytes apart) in place from the given ICC color
+// profile to sRGB. Fails without changing the pixels if the profile can't be applied (e.g. a CMYK profile with RGB
+// pixels).
 NAPS2_JPEG_API int NAPS2_JPEG_CALL naps2_icc_to_srgb(
     uint8_t* pixels, int width, int height, int stride, int pixel_format, const uint8_t* icc, size_t icc_size,
     char* error, int error_size);

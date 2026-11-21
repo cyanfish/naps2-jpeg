@@ -21,7 +21,7 @@ Supported platforms:
 git submodule update --init
 ```
 
-Then run the script for each platform from the `scripts` folder (e.g. `scripts/build-win-x64.ps1`), which builds to `build/<platform>` and copies the library to `artifacts/<platform>`. Requirements: CMake 3.16+ and a C++17 compiler (Visual Studio on Windows).
+Then run the script for each platform from the `scripts` folder (e.g. `scripts/build-win-x64.ps1`), which builds to `build/<platform>` and copies the library to `artifacts/<platform>`. Requirements: CMake 3.18+ and a C++17 compiler (on Windows, Visual Studio with the "C++ Clang Compiler for Windows" and "MSBuild support for LLVM (clang-cl) toolset" components).
 
 The released Linux binaries are cross-compiled on Windows with [Zig](https://ziglang.org) 0.16.0 using `scripts/build-linux-zig.ps1 -Arch x64|arm64` (also requires Ninja), which targets glibc 2.17 so the binaries work on old distros. The `scripts/build-linux-*.sh` scripts build natively on Linux with the system compiler instead; the result requires the build machine's glibc version or newer.
 

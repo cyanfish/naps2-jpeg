@@ -2,7 +2,6 @@
 
 #include "naps2_jpeg.h"
 #include "naps2_util.h"
-#include "skcms.h"
 #include "webp/decode.h"
 #include "webp/demux.h"
 #include "webp/encode.h"
@@ -76,7 +75,7 @@ void DecodeFirstAnimationFrame(const WebPData& data, uint8_t* pixels, size_t pix
 
 // Gets the Exif metadata, and converts the pixels to sRGB if the image has an embedded color profile (which libwebp
 // doesn't apply itself).
-void ApplyMetadata(const WebPData& data, uint8_t* pixels, size_t pixel_count, bool rgba, uint8_t** out_exif,
+void ApplyMetadata(const WebPData& data, uint8_t* pixels, int width, int height, bool rgba, uint8_t** out_exif,
                    size_t* out_exif_size) {
     std::unique_ptr<WebPDemuxer, decltype(&WebPDemuxDelete)> demux(WebPDemux(&data), WebPDemuxDelete);
     if (demux == nullptr) return;
@@ -86,14 +85,9 @@ void ApplyMetadata(const WebPData& data, uint8_t* pixels, size_t pixel_count, bo
         WebPDemuxReleaseChunkIterator(&iter);
     }
     if (WebPDemuxGetChunk(demux.get(), "ICCP", 1, &iter)) {
-        skcms_ICCProfile profile;
-        if (skcms_Parse(iter.chunk.bytes, iter.chunk.size, &profile) &&
-            profile.data_color_space == skcms_Signature_RGB) {
-            auto format = rgba ? skcms_PixelFormat_RGBA_8888 : skcms_PixelFormat_RGB_888;
-            auto alpha = rgba ? skcms_AlphaFormat_Unpremul : skcms_AlphaFormat_Opaque;
-            skcms_Transform(pixels, format, alpha, &profile, pixels, format, alpha, skcms_sRGB_profile(),
-                            pixel_count);
-        }
+        naps2_icc_to_srgb(pixels, width, height, width * (rgba ? 4 : 3),
+                          rgba ? NAPS2_JPEG_PIXEL_RGBA32 : NAPS2_JPEG_PIXEL_RGB24, iter.chunk.bytes, iter.chunk.size,
+                          nullptr, 0);
         WebPDemuxReleaseChunkIterator(&iter);
     }
 }
@@ -143,8 +137,7 @@ extern "C" int NAPS2_JPEG_CALL naps2_webp_decompress(
             auto decode = rgba ? WebPDecodeRGBAInto : WebPDecodeRGBInto;
             Check(decode(data, size, pixels.get(), pixels_size, stride) != nullptr, "Error decoding WebP data");
         }
-        ApplyMetadata(webp_data, pixels.get(), static_cast<size_t>(features.width) * features.height, rgba,
-                      out_exif, out_exif_size);
+        ApplyMetadata(webp_data, pixels.get(), features.width, features.height, rgba, out_exif, out_exif_size);
         *out_width = features.width;
         *out_height = features.height;
         *out_pixel_format = rgba ? NAPS2_JPEG_PIXEL_RGBA32 : NAPS2_JPEG_PIXEL_RGB24;

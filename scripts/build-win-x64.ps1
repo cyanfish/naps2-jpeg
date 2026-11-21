@@ -15,7 +15,7 @@ git -C "$SOURCES_DIR/jpegli" submodule update --init --depth 1 third_party/highw
 git -C "$SOURCES_DIR/libjxl" submodule update --init --depth 1 third_party/brotli third_party/skcms; Check
 
 rm -Recurse -Force "$BUILD_DIR" -ErrorAction SilentlyContinue
-. cmake -S "$BASE_DIR" -B "$BUILD_DIR" -A x64; Check
+. cmake -S "$BASE_DIR" -B "$BUILD_DIR" -A x64 -T ClangCL; Check
 . cmake --build "$BUILD_DIR" --config Release --target naps2_jpeg; Check
 
 mkdir -Force "$TARGET_DIR" | Out-Null
