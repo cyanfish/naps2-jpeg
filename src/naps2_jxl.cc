@@ -151,6 +151,7 @@ void Decompress(const uint8_t* data, size_t size, Buffer* pixels, JxlBasicInfo* 
             Check(JxlDecoderImageOutBufferSize(dec, &format, &buffer_size) == JXL_DEC_SUCCESS,
                   "Invalid JPEG XL data");
             // Gray + alpha needs space to be expanded to RGBA afterwards
+            Check(format.num_channels != 2 || buffer_size <= SIZE_MAX / 2, "The image is too big");
             *pixels = Allocate(format.num_channels == 2 ? buffer_size * 2 : buffer_size);
             Check(JxlDecoderSetImageOutBuffer(dec, &format, pixels->get(), buffer_size) == JXL_DEC_SUCCESS,
                   "Invalid JPEG XL data");
